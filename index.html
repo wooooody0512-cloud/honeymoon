@@ -234,6 +234,10 @@ body { padding: 0 16px 24px; }
 .hm-tierrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 13.5px; }
 .hm-tierrow .hm-seg button { padding: .4rem 1rem; font-size: 13.5px; }
 .hm-nav { margin-top: 10px; }
+#d-photo .ph { margin: -16px -16px 14px; aspect-ratio: 16 / 8; border-radius: 14px 14px 0 0; }
+.hm-days .ph.thumb { margin: -.65rem -.7rem 6px; aspect-ratio: 16 / 9; border-radius: 11px 11px 0 0; }
+.hm-days .ph.thumb .ph-cap, .hm-days .ph.thumb .ph-k { display: none; }
+.hm-days button { overflow: hidden; }
 /* photos */
 .ph { position: relative; aspect-ratio: 16 / 9; margin: -14px -14px 4px; overflow: hidden; display: flex; align-items: flex-end;
   background: linear-gradient(135deg, var(--hm-accent-soft), var(--color-border-line)); }
@@ -342,6 +346,7 @@ body { padding: 0 16px 24px; }
     <div class="hm-days" id="daystrip" data-source="days daytot"></div>
     <div class="hm-grid2" style="margin-top:var(--cds-gap-sm)">
       <div class="hm-card">
+        <div id="d-photo"></div>
         <div class="hm-dhead">
           <div class="note" id="d-meta" style="margin:0"></div>
           <div class="ttl" id="d-title" data-source="days" data-field="title"><span class="dash-skeleton">—</span></div>
@@ -720,13 +725,30 @@ dash.calc('hotel_avg', {
       if (d.car !== '없음') { const dot = el('span', 'dot'); dot.style.background = 'var(--color-warn)'; dot.title = '렌트카'; t1.append(dot); }
       const r = tot.get(d.id);
       const c = el('div', 'dc'); if (r) { mark(c, 'daytot', s.tier, w); c.textContent = man(r[s.tier]); }
+      const sp = window.__HOSTED ? daySpot(d) : null;
+      if (sp) { const ph = photoBox(sp.name_en, ''); ph.classList.add('thumb'); b.append(ph); }
       b.append(t1, mark(el('div', 'dt', d.title), 'days', 'title', w), c);
       return b;
     }));
     const cur = box.querySelector('[aria-pressed="true"]');
     if (cur) box.scrollLeft = Math.max(0, cur.offsetLeft - box.offsetLeft - 24);
   }
+  // representative place of a day, for its photo
+  const SKIP = new Set(['LAX', 'LAS', 'SFO', 'WEHO', 'PARIS', 'FWHOTEL']);
+  const PRIO = ['GCW', 'UNIV', 'DISNEY', 'WB', 'ALCATRAZ', 'GG', 'NAPA', 'MILE17', 'CARMEL', 'PIGEON', 'MATADOR', 'DUME', 'GETTY', 'VILLA', 'GRIFFITH', 'ANGELS',
+    'VENICE', 'SMPIER', 'HERMOSA', 'SPHERE', 'BELLAGIO', 'FREMONT', 'HOOVER', 'PAINTED', 'LOMBARD', 'SAUSALITO', 'FERRY', 'PIER39', 'RODEO', 'WOF', 'GROVE', 'SUNSET'];
+  function daySpot(d) {
+    if (!d || !d.path || !ok('spots')) return null;
+    const m = new Map(dash.data('spots').data.map((r) => [r.key, r]));
+    const keys = d.path.split(',').filter((k) => m.has(k) && !SKIP.has(k));
+    const k = PRIO.find((p) => keys.includes(p)) || keys[0];
+    return k ? m.get(k) : null;
+  }
   function drawDetail(s, day) {
+    const dp = document.getElementById('d-photo');
+    const sp = window.__HOSTED ? daySpot(day) : null;
+    if (sp && dp.dataset.k !== sp.key) { dp.dataset.k = sp.key; dp.replaceChildren(photoBox(sp.name_en, sp.name)); }
+    else if (!sp) { dp.dataset.k = ''; dp.replaceChildren(); }
     const title = document.getElementById('d-title');
     if (!day) { title.replaceChildren(el('span', 'dash-skeleton', '—')); return; }
     const w = 'id=' + day.id;
