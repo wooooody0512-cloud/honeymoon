@@ -725,8 +725,6 @@ dash.calc('hotel_avg', {
       if (d.car !== '없음') { const dot = el('span', 'dot'); dot.style.background = 'var(--color-warn)'; dot.title = '렌트카'; t1.append(dot); }
       const r = tot.get(d.id);
       const c = el('div', 'dc'); if (r) { mark(c, 'daytot', s.tier, w); c.textContent = man(r[s.tier]); }
-      const sp = window.__HOSTED ? daySpot(d) : null;
-      if (sp) { const ph = photoBox(sp.name_en, ''); ph.classList.add('thumb'); b.append(ph); }
       b.append(t1, mark(el('div', 'dt', d.title), 'days', 'title', w), c);
       return b;
     }));
