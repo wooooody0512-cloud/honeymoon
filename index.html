@@ -441,7 +441,7 @@ body { padding: 0 16px 24px; }
     </div>
   </div>
 
-  <p class="hm-foot">사이트 버전 10/27 18:00 (한국 시간) · 2026년 10월 웹 조사 기준 · 1달러 = 1,450원 · '추정' 표시는 공식 가격을 확인하지 못한 값이에요.</p>
+  <p class="hm-foot">사이트 버전 10/27 23:31 (한국 시간) · 2026년 10월 웹 조사 기준 · 1달러 = 1,450원 · '추정' 표시는 공식 가격을 확인하지 못한 값이에요.</p>
 </div>
 
 <script>
@@ -1075,7 +1075,7 @@ dash.calc('hotel_avg', {
   function gEmbedDay(day, spotMap) {
     const box = document.getElementById('map-day'); if (!box || !day) return;
     const slot = gHolder(box, 'g-day');
-    if (mapMode !== 'g') { slot.replaceChildren(); return; }
+    if (mapMode !== 'g') { slot.replaceChildren(); slot.dataset.src = ''; return; }
     const keys = day.path.split(',').filter((k, i, a) => spotMap.has(k) && k !== a[i - 1]);
     if (!keys.length) { slot.replaceChildren(); return; }
     const pts = keys.map((k) => ll(spotMap.get(k)));
@@ -1086,9 +1086,25 @@ dash.calc('hotel_avg', {
   function gEmbedPick(r) {
     const box = document.getElementById('map-pick'); if (!box || !r) return;
     const slot = gHolder(box, 'g-pick-' + r.id);
-    if (mapMode !== 'g') { slot.replaceChildren(); return; }
+    if (mapMode !== 'g') { slot.replaceChildren(); slot.dataset.src = ''; return; }
     const src = 'https://maps.google.com/maps?q=' + ll(r) + '&z=15&hl=ko&output=embed';
     slot.replaceChildren(gFrame(src, r.name + ' 위치', 300));
+  }
+  // overview route: bases + side trips in day order, as one Google route
+  function gEmbedRegion(s, dayRows, spotMap) {
+    const box = document.getElementById('map-region'); if (!box) return;
+    const slot = gHolder(box, 'g-region-map');
+    const note = slot.parentNode.querySelector('.note');
+    if (mapMode === 'g') note.textContent = '구글 지도의 경로선은 자동차 기준이라 비행기로 가는 구간(인천 왕복, 국내선)도 도로로 그려져요. 지도가 회색으로만 보이면 \'약도\'를 눌러 주세요.';
+    if (mapMode !== 'g') { slot.replaceChildren(); slot.dataset.src = ''; return; }
+    const keep = new Set([...Object.values(BASE), 'SMHOTEL', ...Object.keys(TRIPS)]);
+    const keys = [];
+    for (const d of dayRows) for (const k of d.path.split(',')) if (keep.has(k) && spotMap.has(k) && keys[keys.length - 1] !== k) keys.push(k);
+    const pts = keys.slice(0, 11).map((k) => ll(spotMap.get(k)));
+    if (!pts.length) { slot.replaceChildren(); return; }
+    const src = pts.length < 2 ? 'https://maps.google.com/maps?q=' + pts[0] + '&z=7&hl=ko&output=embed'
+      : 'https://maps.google.com/maps?saddr=' + pts[0] + '&daddr=' + pts.slice(1).join('+to:') + '&hl=ko&output=embed';
+    if (slot.dataset.src !== src) { slot.dataset.src = src; slot.replaceChildren(gFrame(src, '전체 동선 지도', 360)); }
   }
   let sheetOpen = '';
   function drawSheet(s) {
@@ -1210,7 +1226,7 @@ dash.calc('hotel_avg', {
     const day = dayRows.find((d) => Number(d.day) === s.day) || dayRows[0];
     if (s.view === 'overview') {
       document.getElementById('cat-note').textContent = TIER[s.tier] + ' · 2인 합계 (만원) · 막대를 누르면 상세 비용으로 이동';
-      safe(() => drawCat(s)); safe(() => drawRegion(s, dayRows, spotMap)); safe(() => { const C = { LA: 'Los Angeles, CA', LV: 'Las Vegas, NV', SF: 'San Francisco, CA' }; const seq = []; for (const d of dayRows) for (const k of d.path.split(',')) { const c = spotMap.get(k)?.city; if (c && seq[seq.length - 1] !== c) seq.push(c); } document.getElementById('g-region').href = 'https://www.google.com/maps/dir/' + seq.map((c) => encodeURIComponent(C[c])).join('/'); });
+      safe(() => drawCat(s)); safe(() => drawRegion(s, dayRows, spotMap)); safe(() => { const C = { LA: 'Los Angeles, CA', LV: 'Las Vegas, NV', SF: 'San Francisco, CA' }; const seq = []; for (const d of dayRows) for (const k of d.path.split(',')) { const c = spotMap.get(k)?.city; if (c && seq[seq.length - 1] !== c) seq.push(c); } document.getElementById('g-region').href = 'https://www.google.com/maps/dir/' + seq.map((c) => encodeURIComponent(C[c])).join('/'); }); safe(() => gEmbedRegion(s, dayRows, spotMap));
     }
     if (s.view === 'days') { safe(() => drawStrip(s, dayRows)); safe(() => drawDetail(s, day)); safe(() => drawDayMap(day, spotMap)); safe(() => gEmbedDay(day, spotMap)); }
     if (s.view === 'picks') safe(() => drawPicks(s));
