@@ -239,6 +239,13 @@ body { padding: 0 16px 24px; }
 .hm-days .ph.thumb .ph-cap, .hm-days .ph.thumb .ph-k { display: none; }
 .hm-days button { overflow: hidden; }
 .hm [hidden] { display: none !important; }
+.hm-acth { cursor: pointer; user-select: none; }
+.hm-acth:hover, .hm-acth:focus-visible { color: var(--hm-accent); outline: none; }
+.hm-acth .chev { color: var(--hm-accent); }
+.hm-acth .cnt { color: var(--color-fg-muted); font-size: 12.5px; }
+.hm-sum li.hm-actsub { padding: .4rem 0 .4rem 1.1rem; font-size: 13px; color: var(--color-fg-muted); border-bottom: 1px dashed var(--color-border-line); }
+.hm-actsub b { color: var(--color-fg); font-weight: 600; }
+.hm-actsub .r { color: var(--color-fg); white-space: nowrap; }
 /* photos */
 .ph { position: relative; aspect-ratio: 16 / 9; margin: -14px -14px 4px; overflow: hidden; display: flex; align-items: flex-end;
   background: linear-gradient(135deg, var(--hm-accent-soft), var(--color-border-line)); }
@@ -760,6 +767,7 @@ dash.calc('hotel_avg', {
     const k = PRIO.find((p) => keys.includes(p)) || keys[0];
     return k ? m.get(k) : null;
   }
+  let actOpen = false;
   function drawDetail(s, day) {
     const dp = document.getElementById('d-photo');
     const sp = window.__HOSTED ? daySpot(day) : null;
@@ -799,7 +807,24 @@ dash.calc('hotel_avg', {
     const items = [];
     items.push(li('숙소', mark(el('span', '', day[hName]), 'days', hName, w)));
     items.push(li('숙박비 (세금 포함)', mark(el('span', '', won(day[hName + '_krw'])), 'days', hName + '_krw', w)));
-    if (tot) items.push(li('일정·교통·입장료', mark(el('span', '', won(tot['act_' + s.tier])), 'daytot', 'act_' + s.tier, w)));
+    if (tot) {
+      // expandable: tap to see each paid item of the day's schedule
+      const f2 = s.tier + '_krw';
+      const paid = ok('schedule') ? dash.data('schedule').data.filter((r) => r.day_id === day.id && Number(r[f2]) > 0).sort((a, b) => a.seq - b.seq) : [];
+      const head = el('li', 'hm-acth'); head.setAttribute('role', 'button'); head.tabIndex = 0; head.setAttribute('aria-expanded', String(actOpen));
+      const lab = el('span', ''); lab.append(el('span', 'chev', actOpen ? '▾ ' : '▸ '), document.createTextNode('일정·교통·입장료'), el('span', 'cnt', ' ' + paid.length + '건'));
+      const val = el('span', 'r'); val.append(mark(el('span', '', won(tot['act_' + s.tier])), 'daytot', 'act_' + s.tier, w));
+      head.append(lab, val);
+      const toggle = () => { actOpen = !actOpen; drawDetail(st(), day); };
+      head.addEventListener('click', toggle); head.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(); } });
+      items.push(head);
+      if (actOpen) for (const r of paid) {
+        const sub = el('li', 'hm-actsub');
+        const left = el('span', ''); left.append(el('b', '', r.time + ' '), mark(el('span', '', r.activity), 'schedule', 'activity', 'id=' + r.id));
+        sub.append(left, mark(el('span', 'r', won(r[f2])), 'schedule', f2, 'id=' + r.id));
+        items.push(sub);
+      }
+    }
     items.push(li('기본 식비', mark(el('span', '', won(day['food_' + s.tier + '_krw'])), 'days', 'food_' + s.tier + '_krw', w)));
     if (tot) items.push(li('하루 합계 (2인)', mark(el('span', '', won(tot[s.tier])), 'daytot', s.tier, w), 'tot'));
     sum.replaceChildren(...items);
